@@ -13,14 +13,23 @@ public class SessionManager
 
     public void OnBeforeLoadState()
     {
-        // If the previous attempt is incomplete and some room was timed, mark as DNF
-        if (HasActiveAttempt && !RoomTimerIntegration.RoomTimerIsCompleted() && RoomTimerIntegration.GetRoomTime() > 0)
+        if (!HasActiveAttempt)
+            return;
+
+        if (RoomTimerIntegration.RoomTimerIsCompleted())
         {
+            // Timer endpoint was reached → completed attempt
+            EndCurrentAttempt();
+        }
+        else if (RoomTimerIntegration.GetRoomTime() > 0)
+        {
+            // Timer still running but player reset → DNF
             var dnfRoomIndex = _currentAttemptBuilder.Count;
             TimeTicks ticks = new(RoomTimerIntegration.GetRoomTime());
             _currentAttemptBuilder.SetDnf(dnfRoomIndex, ticks);
             EndCurrentAttempt();
         }
+        // else: no progress at all, builder will be replaced by OnLoadState
     }
 
     public void OnLoadState()
@@ -43,7 +52,7 @@ public class SessionManager
     }
 
 
-    public void EndCurrentAttempt()
+    private void EndCurrentAttempt()
     {
         if (!HasActiveAttempt)
             return;
@@ -51,9 +60,8 @@ public class SessionManager
         var attempt = _currentAttemptBuilder.Build();
         _currentSession.AddAttempt(attempt);
 
-        // Define room count dynamically if first completed attempt
-        if (_currentSession.RoomCount == 0 && attempt.Outcome == AttemptOutcome.Completed)
-            _currentSession.RoomCount = attempt.CompletedRooms.Count;
+        // Always expand room count to the max rooms seen in any attempt
+        _currentSession.RoomCount = Math.Max(_currentSession.RoomCount, attempt.CompletedRooms.Count);
 
         _currentAttemptBuilder = null;
     }
@@ -61,14 +69,20 @@ public class SessionManager
     public PracticeSession CurrentSession => _currentSession;
     public AttemptBuilder CurrentAttempt => _currentAttemptBuilder;
     public bool HasActiveAttempt => _currentAttemptBuilder != null;
+
+    public void SetRoomCount(int count)
+    {
+        _currentSession.RoomCount = Math.Max(_currentSession.RoomCount, count);
+    }
+
     public int DynamicRoomCount()
     {
-        if (_currentSession.RoomCount == 0) {
-            return Math.Max(CurrentSession.Attempts.Select(a => a.CompletedRooms.Count).DefaultIfEmpty(0).Max(), _currentAttemptBuilder.Count);
-        }
-        else
-        {
-            return _currentSession.RoomCount;
-        }
+        int fromAttempts = CurrentSession.Attempts
+            .Select(a => a.CompletedRooms.Count)
+            .DefaultIfEmpty(0)
+            .Max();
+        int inProgress = _currentAttemptBuilder?.Count ?? 0;
+
+        return Math.Max(Math.Max(_currentSession.RoomCount, fromAttempts), inProgress);
     }
 }

@@ -111,6 +111,7 @@ namespace Celeste.Mod.SpeebrunConsistencyTracker.Entities {
 
         public override void Render() {
             base.Render();
+            if (Text == null || Text.Count == 0) return;
             
             if (Orientation == StatTextOrientation.Horizontal)
             {

@@ -334,12 +334,18 @@ namespace Celeste.Mod.SpeebrunConsistencyTracker.Metrics
             // No need to check for isExport since we need to find the min of every room anyway
             for (int r = 0; r < roomCount; r++)
             {
-                TimeTicks bestRoom = context.GetOrCompute($"min_room_{r}", () => context.GetOrCompute(
-                        $"room_{r}_values_sorted",
-                        () => session.GetRoomTimes(r)
-                                    .OrderBy(t => t)
-                                    .ToList()
-                    )[0]);
+                var sorted = context.GetOrCompute(
+                    $"room_{r}_values_sorted",
+                    () => session.GetRoomTimes(r)
+                                .OrderBy(t => t)
+                                .ToList()
+                );
+                if (sorted.Count == 0)
+                {
+                    roomValues.Add("");
+                    continue;
+                }
+                TimeTicks bestRoom = context.GetOrCompute($"min_room_{r}", () => sorted[0]);
                 sumTicks += bestRoom;
                 roomValues.Add(sumTicks.ToString());
             }
@@ -579,6 +585,11 @@ namespace Celeste.Mod.SpeebrunConsistencyTracker.Metrics
                                     .OrderBy(t => t)
                                     .ToList()
                     );
+                    if (roomTimes.Count < 2)
+                    {
+                        roomValues.Add("");
+                        continue;
+                    }
                     double roomAvg = context.GetOrCompute($"avg_room_{r}", () => roomTimes.Average(t => t.Ticks));
                     double stdRoom = context.GetOrCompute($"std_room_{r}", () => Math.Sqrt(roomTimes.Sum(t => Math.Pow(t.Ticks - roomAvg, 2)) / (roomTimes.Count - 1)));
                     double roomResetRate = context.GetOrCompute($"resetRate_room_{r}", () => (double)session.DnfPerRoom.GetValueOrDefault(r) / session.TotalAttemptsPerRoom.GetValueOrDefault(r));
@@ -650,6 +661,11 @@ namespace Celeste.Mod.SpeebrunConsistencyTracker.Metrics
                                 .OrderBy(t => t)
                                 .ToList()
                 );
+                if (roomTimes.Count < 2)
+                {
+                    roomValues.Add("");
+                    continue;
+                }
                 double roomAvg = context.GetOrCompute($"avg_room_{r}", () => roomTimes.Average(t => t.Ticks));
                 double stdRoom = context.GetOrCompute($"std_room_{r}", () => Math.Sqrt(roomTimes.Sum(t => Math.Pow(t.Ticks - roomAvg, 2)) / (roomTimes.Count - 1)));
                 TimeTicks maxRoom = context.GetOrCompute($"max_room_{r}", () => roomTimes[^1]);

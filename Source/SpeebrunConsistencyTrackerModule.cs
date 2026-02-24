@@ -100,8 +100,9 @@ public class SpeebrunConsistencyTrackerModule : EverestModule {
     private static void OnSetNumberOfRooms(orig_SetNumberOfRooms orig, object self, int value) {
         orig(self, value);
 
-        if (Settings.Enabled)
-            Instance.sessionManager?.OnBeforeLoadState(); // changing the number of rooms is considered as dnf
+        if (Settings.Enabled && Instance.sessionManager != null) {
+            Instance.sessionManager.SetRoomCount(value);
+        }
     }
         
 
@@ -173,24 +174,22 @@ public class SpeebrunConsistencyTrackerModule : EverestModule {
             return;
         }
 
-        if (RoomTimerIntegration.RoomTimerIsCompleted())
+        if (RoomTimerIntegration.RoomTimerIsCompleted() && Settings.OverlayEnabled)
         {
-            if (Instance.sessionManager.HasActiveAttempt)
+            if (Instance.textOverlay == null)
             {
-                Instance.sessionManager.EndCurrentAttempt();
+                Instance.textOverlay = [];
+                self.Entities.Add(Instance.textOverlay);
             }
-            else if (Settings.OverlayEnabled) 
+            if (MetricsExporter.ExportSessionToOverlay(Instance.sessionManager.CurrentSession, out List<string> result))
             {
-                if (Instance.textOverlay == null)
-                {
-                    Instance.textOverlay = [];
-                    self.Entities.Add(Instance.textOverlay);
-                }
-                if (MetricsExporter.ExportSessionToOverlay(Instance.sessionManager.CurrentSession, out List<string> result))
-                {
-                    Instance.textOverlay.SetText(result); 
-                }
+                Instance.textOverlay.SetText(result); 
             }
+        }
+        else if (Instance.textOverlay != null)
+        {
+            Instance.textOverlay.RemoveSelf();
+            Instance.textOverlay = null;
         }
 
         orig(self);        
