@@ -162,6 +162,7 @@ namespace Celeste.Mod.SpeebrunConsistencyTracker.Entities
             if (labels.Count > 0)
             {
                 float barWidth = w / labels.Count;
+                float baseLabelY = y + h + 10;
                 
                 for (int i = 0; i < labels.Count; i++)
                 {
@@ -169,10 +170,12 @@ namespace Celeste.Mod.SpeebrunConsistencyTracker.Entities
                     
                     string label = labels[i];
                     Vector2 labelSize = ActiveFont.Measure(label) * 0.35f;
-                    
+                    // Stagger Y positions to improve visibility when tracking large number of rooms
+                    float labelY = values.Count > 25 ? i % 2 == 0 ? baseLabelY : baseLabelY + 20 : baseLabelY;
+
                     ActiveFont.DrawOutline(
                         label,
-                        new Vector2(labelX - labelSize.X / 2, y + h + 10),
+                        new Vector2(labelX - labelSize.X / 2, labelY),
                         new Vector2(0f, 0f),
                         Vector2.One * 0.35f,
                         barColor,
