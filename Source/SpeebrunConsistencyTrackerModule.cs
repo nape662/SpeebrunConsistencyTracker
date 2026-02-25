@@ -212,7 +212,7 @@ public class SpeebrunConsistencyTrackerModule : EverestModule {
                 {
                     List<List<TimeTicks>> rooms = [.. Enumerable.Range(0, segmentLength).Select<int, List<TimeTicks>>(i => [.. Instance.sessionManager.CurrentSession.GetRoomTimes(i)]).Where(roomList => roomList.Count > 0)];
                     List<TimeTicks> segment = [.. Instance.sessionManager.CurrentSession.GetSegmentTimes(segmentLength)];
-                    Instance.graphManager = new GraphManager(rooms, segment, MetricHelper.IsMetricEnabled(Settings.TargetTime, MetricOutput.Overlay) ? MetricEngine.GetTargetTimeTicks() : null);
+                    Instance.graphManager = new GraphManager(rooms, segment, Instance.sessionManager.CurrentSession.DnfPerRoom, MetricHelper.IsMetricEnabled(Settings.TargetTime, MetricOutput.Overlay) ? MetricEngine.GetTargetTimeTicks() : null);
                     if (!self.Paused)
                         Instance.graphManager.NextGraph(self);
                 }
@@ -238,7 +238,7 @@ public class SpeebrunConsistencyTrackerModule : EverestModule {
                     List<TimeTicks> segment = [.. Instance.sessionManager.CurrentSession.GetSegmentTimes(segmentLength)];
                     int graphIndex = Instance.graphManager.CurrentIndex(out int index) ? index : rooms.Count + index;
                     Instance.graphManager.RemoveGraphs();
-                    Instance.graphManager = new GraphManager(graphIndex, rooms, segment, MetricHelper.IsMetricEnabled(Settings.TargetTime, MetricOutput.Overlay) ? MetricEngine.GetTargetTimeTicks() : null);
+                    Instance.graphManager = new GraphManager(graphIndex, rooms, segment, Instance.sessionManager.CurrentSession.DnfPerRoom, MetricHelper.IsMetricEnabled(Settings.TargetTime, MetricOutput.Overlay) ? MetricEngine.GetTargetTimeTicks() : null);
                     if (!self.Paused) Instance.graphManager.NextGraph(self);
                 }
             }
