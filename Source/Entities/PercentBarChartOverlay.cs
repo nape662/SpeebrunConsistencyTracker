@@ -170,21 +170,8 @@ namespace Celeste.Mod.SpeebrunConsistencyTracker.Entities
                 Color.Black
             );
             
-            // Y axis label
-            string yAxisLabel = "%";
-            Vector2 yAxisSize = ActiveFont.Measure(yAxisLabel) * 0.5f;
-            ActiveFont.DrawOutline(
-                yAxisLabel,
-                new Vector2(x - yAxisSize.X - 25, y + h / 2 - yAxisSize.Y / 2),
-                new Vector2(0f, 0f),
-                Vector2.One * 0.5f,
-                Color.White,
-                2f,
-                Color.Black
-            );
-            
             // Y axis ticks (0% to 100%)
-            int yLabelCount = 5;
+            int yLabelCount = 10;
             for (int i = 0; i <= yLabelCount; i++)
             {
                 double pctValue = (double)maxValue / yLabelCount * i;
@@ -248,16 +235,26 @@ namespace Celeste.Mod.SpeebrunConsistencyTracker.Entities
             }
         }
         
-        private void DrawLegendEntry(float x, float y, string text, Color color, float scale, bool right = false)
+        private static void DrawLegendEntry(float x, float y, string text, Color color, float scale, bool right = false)
         {
             Vector2 textSize = ActiveFont.Measure(text) * scale;
-            float totalWidth = textSize.X + 20; // 15 for color box + 5 spacing
-            float startX = right ? x - totalWidth : x;
+            float boxSize = 12f;
+            float spacing = 5f;
+            float totalWidth = textSize.X + boxSize + spacing;
             
-            Draw.Rect(startX, y + 2, 12, 12, color);
+            float startX = right ? x - totalWidth : x;
+
+            // Center the box vertically relative to the text height
+            // (textSize.Y / 2) is the middle of the text line
+            float boxY = y + (textSize.Y / 2f) - (boxSize / 2f);
+
+            // Draw the color box
+            Draw.Rect(startX, boxY, boxSize, boxSize, color);
+
+            // Draw the text
             ActiveFont.DrawOutline(
                 text,
-                new Vector2(startX + 17, y),
+                new Vector2(startX + boxSize + spacing, y),
                 new Vector2(0f, 0f),
                 Vector2.One * scale,
                 Color.White,
