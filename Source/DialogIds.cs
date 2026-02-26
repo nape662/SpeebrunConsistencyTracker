@@ -49,6 +49,7 @@ public static class DialogIds {
     public const string TextAlphaId = "TEXT_ALPHA";
     public const string RoomColorId = "ROOM_COLOR";
     public const string SegmentColorId = "SEGMENT_COLOR";
+    public const string RoomTimeDistributionPlotsId = "ROOM_TIME_DISTRIBUTION_PLOTS";
     public const string TimeLossThresholdId = "TIME_LOSS_THRESHOLD";
     
     // Stats Menu

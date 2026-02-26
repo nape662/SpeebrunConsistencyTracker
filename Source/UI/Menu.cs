@@ -201,6 +201,15 @@ public static class ModMenuOptions
         TextMenu.Slider textAlpha = new(Dialog.Clean(DialogIds.TextAlphaId), i => (i/100f).ToString("0.00"), 0, 100, _settings._textAlpha);
         TextMenu.Slider roomColor = new(Dialog.Clean(DialogIds.RoomColorId), i => enumColorValues[i].ToString(), 0, enumColorValues.Length - 1, Array.IndexOf(enumColorValues, _settings.RoomColor));
         TextMenu.Slider segmentColor = new(Dialog.Clean(DialogIds.SegmentColorId), i => enumColorValues[i].ToString(), 0, enumColorValues.Length - 1, Array.IndexOf(enumColorValues, _settings.SegmentColor));
+        TextMenu.OnOff roomTimeDistributionPlots = (TextMenu.OnOff)new TextMenu.OnOff(
+            Dialog.Clean(DialogIds.RoomTimeDistributionPlotsId),
+            _settings.ShowRoomTimeDistributionPlots
+        ).Change(value =>
+        {
+            _settings.ShowRoomTimeDistributionPlots = value;
+            _instance.graphManager?.RemoveGraphs();
+            _instance.graphManager = null;
+        });
         
         FormattedIntSlider timeLossThreshold = new(
             Dialog.Clean(DialogIds.TimeLossThresholdId),
@@ -255,6 +264,7 @@ public static class ModMenuOptions
                 textAlpha.Visible = value;
                 textPosition.Visible = value;
                 textOrientation.Visible = value;
+                roomTimeDistributionPlots.Visible = value;
                 roomColor.Visible = value;
                 segmentColor.Visible = value;
                 timeLossThreshold.Visible = value;
@@ -268,6 +278,7 @@ public static class ModMenuOptions
         overlaySubMenu.Add(textPosition);
         overlaySubMenu.Add(textOrientation);
         overlaySubMenu.Add(new TextMenu.SubHeader(Dialog.Clean(DialogIds.GraphOverlayId), false));
+        overlaySubMenu.Add(roomTimeDistributionPlots);
         overlaySubMenu.Add(roomColor);
         overlaySubMenu.Add(segmentColor);
         overlaySubMenu.Add(timeLossThreshold);

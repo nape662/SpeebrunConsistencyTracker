@@ -10,6 +10,7 @@ namespace Celeste.Mod.SpeebrunConsistencyTracker.SessionManagement;
 public class GraphManager(int index, List<List<TimeTicks>> rooms, List<TimeTicks> segment, IReadOnlyDictionary<int, int> dnfPerRoom, IReadOnlyDictionary<int, int> totalAttemptsPerRoom, TimeTicks? target = null)
 {
     private readonly SpeebrunConsistencyTrackerModuleSettings _settings = SpeebrunConsistencyTrackerModule.Settings;
+    private readonly bool showRoomTimeDistributionPlots = SpeebrunConsistencyTrackerModule.Settings.ShowRoomTimeDistributionPlots;
 
     private readonly List<List<TimeTicks>> roomTimes = rooms;
     private readonly List<TimeTicks> segmentTimes = segment;
@@ -27,23 +28,35 @@ public class GraphManager(int index, List<List<TimeTicks>> rooms, List<TimeTicks
     private PercentBarChartOverlay problemRoomsChart;
     
     // Current state
-    private int currentIndex = index; // -1 = scatter, 0..N-1 = room histogram, N = segment, N+1 = DNF%, N+2 = problem rooms
+    private int currentIndex = index; // -1 = scatter, then optional room histograms, then segment, DNF%, problem rooms
+    private int RoomGraphCount => showRoomTimeDistributionPlots ? roomTimes.Count : 0;
+    private int SegmentGraphIndex => RoomGraphCount;
+    private int DnfGraphIndex => RoomGraphCount + 1;
+    private int LastGraphIndex => RoomGraphCount + 2;
     public bool CurrentIndex(out int index)
     {
-        index = currentIndex - 1;
-        if (index < roomTimes.Count)
-            return true;
-        else
+        int displayedGraphIndex = currentIndex - 1;
+        if (displayedGraphIndex == -1)
         {
-            index -= roomTimes.Count;
-            return false;
+            index = -1;
+            return true;
         }
+
+        if (showRoomTimeDistributionPlots && displayedGraphIndex < roomTimes.Count)
+        {
+            index = displayedGraphIndex;
+            return true;
+        }
+
+        index = showRoomTimeDistributionPlots ? displayedGraphIndex - roomTimes.Count : displayedGraphIndex;
+        return false;
     }
     private Entity currentOverlay;
 
     public GraphManager(List<List<TimeTicks>> rooms, List<TimeTicks> segment, IReadOnlyDictionary<int, int> dnfPerRoom, IReadOnlyDictionary<int, int> totalAttemptsPerRoom, TimeTicks? target = null) : this(-1, rooms, segment, dnfPerRoom, totalAttemptsPerRoom, target) {}
 
-    public bool SameSettings(int segmentLength) => this.segmentLength == segmentLength;
+    public bool SameSettings(int segmentLength) => this.segmentLength == segmentLength
+        && showRoomTimeDistributionPlots == _settings.ShowRoomTimeDistributionPlots;
 
     public void NextGraph(Level level)
     {
@@ -51,13 +64,13 @@ public class GraphManager(int index, List<List<TimeTicks>> rooms, List<TimeTicks
         currentOverlay?.RemoveSelf();
         currentOverlay = null;
         
-        // Cycle: scatter -> rooms -> segment -> dnf% -> problem rooms -> scatter
-        if (currentIndex > roomTimes.Count + 2)
+        // Cycle: scatter -> optional room distributions -> segment -> dnf% -> problem rooms -> scatter
+        if (currentIndex > LastGraphIndex)
         {
             currentIndex = -1; // Back to scatter
         } else if (currentIndex < -1)
         {
-            currentIndex = roomTimes.Count + 2; // Goes to last chart
+            currentIndex = LastGraphIndex; // Goes to last chart
         }
         
         // Show appropriate graph
@@ -67,7 +80,7 @@ public class GraphManager(int index, List<List<TimeTicks>> rooms, List<TimeTicks
             scatterGraph ??= new GraphOverlay(roomTimes, segmentTimes, null, targetTime);
             currentOverlay = scatterGraph;
         }
-        else if (currentIndex < roomTimes.Count)
+        else if (showRoomTimeDistributionPlots && currentIndex < roomTimes.Count)
         {
             // Show room histogram
             if (!roomHistograms.TryGetValue(currentIndex, out HistogramOverlay value))
@@ -81,7 +94,7 @@ public class GraphManager(int index, List<List<TimeTicks>> rooms, List<TimeTicks
             }
             currentOverlay = value;
         }
-        else if (currentIndex == roomTimes.Count)
+        else if (currentIndex == SegmentGraphIndex)
         {
             // Show segment histogram
             segmentHistogram ??= new HistogramOverlay(
@@ -91,7 +104,7 @@ public class GraphManager(int index, List<List<TimeTicks>> rooms, List<TimeTicks
                 );
             currentOverlay = segmentHistogram;
         }
-        else if (currentIndex == roomTimes.Count + 1)
+        else if (currentIndex == DnfGraphIndex)
         {
             // Show DNF percentage chart
             if (dnfPctChart == null)
