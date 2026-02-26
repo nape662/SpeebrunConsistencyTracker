@@ -7,7 +7,7 @@ using System.Linq;
 
 namespace Celeste.Mod.SpeebrunConsistencyTracker.SessionManagement;
 
-public class GraphManager(int index, List<List<TimeTicks>> rooms, List<TimeTicks> segment, IReadOnlyDictionary<int, int> dnfPerRoom, TimeTicks? target = null)
+public class GraphManager(int index, List<List<TimeTicks>> rooms, List<TimeTicks> segment, IReadOnlyDictionary<int, int> dnfPerRoom, IReadOnlyDictionary<int, int> totalAttemptsPerRoom, TimeTicks? target = null)
 {
     private readonly SpeebrunConsistencyTrackerModuleSettings _settings = SpeebrunConsistencyTrackerModule.Settings;
 
@@ -15,7 +15,7 @@ public class GraphManager(int index, List<List<TimeTicks>> rooms, List<TimeTicks
     private readonly List<TimeTicks> segmentTimes = segment;
     private readonly IReadOnlyDictionary<int, int> dnfData = dnfPerRoom;
     private readonly IReadOnlyDictionary<int, int> attemptsByRoom = totalAttemptsPerRoom;
-    private readonly int totalRooms = roomCount;
+    private readonly int totalRooms = rooms.Count;
     private readonly TimeTicks? targetTime = target;
     private readonly int segmentLength = rooms.Count;
     
@@ -27,7 +27,7 @@ public class GraphManager(int index, List<List<TimeTicks>> rooms, List<TimeTicks
     private PercentBarChartOverlay problemRoomsChart;
     
     // Current state
-    private int currentIndex = index; // -1 = scatter, 0+ = room histogram, Count = segment histogram
+    private int currentIndex = index; // -1 = scatter, 0..N-1 = room histogram, N = segment, N+1 = DNF%, N+2 = problem rooms
     public bool CurrentIndex(out int index)
     {
         index = currentIndex - 1;
@@ -41,7 +41,7 @@ public class GraphManager(int index, List<List<TimeTicks>> rooms, List<TimeTicks
     }
     private Entity currentOverlay;
 
-    public GraphManager(List<List<TimeTicks>> rooms, List<TimeTicks> segment, IReadOnlyDictionary<int, int> dnfPerRoom, TimeTicks? target = null) : this(-1, rooms, segment, dnfPerRoom, target) {}
+    public GraphManager(List<List<TimeTicks>> rooms, List<TimeTicks> segment, IReadOnlyDictionary<int, int> dnfPerRoom, IReadOnlyDictionary<int, int> totalAttemptsPerRoom, TimeTicks? target = null) : this(-1, rooms, segment, dnfPerRoom, totalAttemptsPerRoom, target) {}
 
     public bool SameSettings(int segmentLength) => this.segmentLength == segmentLength;
 
@@ -103,7 +103,7 @@ public class GraphManager(int index, List<List<TimeTicks>> rooms, List<TimeTicks
                     if (reached == 0) return 0.0;
                     return (double)dnfData.GetValueOrDefault(i) / reached * 100;
                 }).ToList();
-                dnfPctChart = new PercentBarChartOverlay("DNF % by Room", labels, dnfPcts, Color.CornflowerBlue, "DNF %");
+                dnfPctChart = new PercentBarChartOverlay("DNF % per Room", labels, dnfPcts, Color.CornflowerBlue, "DNF %");
             }
             currentOverlay = dnfPctChart;
         }
