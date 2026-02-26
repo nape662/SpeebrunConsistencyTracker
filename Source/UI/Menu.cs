@@ -194,7 +194,7 @@ public static class ModMenuOptions
         TextMenu.Slider textAlpha = new(Dialog.Clean(DialogIds.TextAlphaId), i => (i/100f).ToString("0.00"), 0, 100, _settings._textAlpha);
         TextMenu.Slider roomColor = new(Dialog.Clean(DialogIds.RoomColorId), i => enumColorValues[i].ToString(), 0, enumColorValues.Length - 1, Array.IndexOf(enumColorValues, _settings.RoomColor));
         TextMenu.Slider segmentColor = new(Dialog.Clean(DialogIds.SegmentColorId), i => enumColorValues[i].ToString(), 0, enumColorValues.Length - 1, Array.IndexOf(enumColorValues, _settings.SegmentColor));
-        TextMenuExt.IntSlider timeLossThreshold = new(Dialog.Clean(DialogIds.TimeLossThresholdId), 100, 2000, _settings.TimeLossThresholdMs);
+        TextMenuExt.IntSlider timeLossThreshold = new(Dialog.Clean(DialogIds.TimeLossThresholdId), 17, 2000, _settings.TimeLossThresholdMs);
 
         textAlpha.Change(v => {
             _settings._textAlpha = v;
