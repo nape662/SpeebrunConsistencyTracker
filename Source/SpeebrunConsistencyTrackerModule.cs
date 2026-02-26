@@ -205,43 +205,53 @@ public class SpeebrunConsistencyTrackerModule : EverestModule {
         }
         
         SessionManager activeSessionManager = Instance.sessionManager;
-        if (Settings.OverlayEnabled && activeSessionManager != null)
-        {
-            int segmentLength = activeSessionManager.DynamicRoomCount();
-            if (Settings.ButtonToggleGraphOverlay.Pressed) {
-                if (Instance.graphManager == null)
-                {
-                    List<List<TimeTicks>> rooms = [.. Enumerable.Range(0, segmentLength).Select<int, List<TimeTicks>>(i => [.. activeSessionManager.CurrentSession.GetRoomTimes(i)]).Where(roomList => roomList.Count > 0)];
-                    List<TimeTicks> segment = [.. activeSessionManager.CurrentSession.GetSegmentTimes(segmentLength)];
-                    Instance.graphManager = new GraphManager(rooms, segment, activeSessionManager.CurrentSession.DnfPerRoom, activeSessionManager.CurrentSession.TotalAttemptsPerRoom, MetricHelper.IsMetricEnabled(Settings.TargetTime, MetricOutput.Overlay) ? MetricEngine.GetTargetTimeTicks() : null);
-                    if (!self.Paused)
-                        Instance.graphManager.NextGraph(self);
-                }
-                else if (Instance.graphManager.IsShowing())
-                {
-                    Instance.graphManager.HideGraph();
-                }
-                else if (!self.Paused)
-                {
-                    Instance.graphManager.CurrentGraph(self);
-                }
-            } else if (Instance.graphManager != null && Instance.graphManager.IsShowing())
+        int segmentLength = activeSessionManager.DynamicRoomCount();
+        if (Settings.ButtonToggleGraphOverlay.Pressed) {
+            if (Instance.graphManager == null)
             {
-                if (Settings.ButtonNextGraph.Pressed)
-                {
-                    Instance.graphManager.NextGraph(self);
-                } else if (Settings.ButtonPreviousGraph.Pressed)
-                {
-                    Instance.graphManager.PreviousGraph(self);
-                } else if (!Instance.graphManager.SameSettings(segmentLength))
-                {
-                    List<List<TimeTicks>> rooms = [.. Enumerable.Range(0, segmentLength).Select<int, List<TimeTicks>>(i => [.. activeSessionManager.CurrentSession.GetRoomTimes(i)]).Where(roomList => roomList.Count > 0)];
-                    List<TimeTicks> segment = [.. activeSessionManager.CurrentSession.GetSegmentTimes(segmentLength)];
-                    int graphIndex = Instance.graphManager.CurrentIndex(out int index) ? index : rooms.Count + index;
-                    Instance.graphManager.RemoveGraphs();
-                    Instance.graphManager = new GraphManager(graphIndex, rooms, segment, activeSessionManager.CurrentSession.DnfPerRoom, activeSessionManager.CurrentSession.TotalAttemptsPerRoom, MetricHelper.IsMetricEnabled(Settings.TargetTime, MetricOutput.Overlay) ? MetricEngine.GetTargetTimeTicks() : null);
-                    if (!self.Paused) Instance.graphManager.NextGraph(self);
-                }
+                List<List<TimeTicks>> rooms = [.. Enumerable.Range(0, segmentLength).Select<int, List<TimeTicks>>(i => [.. activeSessionManager.CurrentSession.GetRoomTimes(i)]).Where(roomList => roomList.Count > 0)];
+                List<TimeTicks> segment = [.. activeSessionManager.CurrentSession.GetSegmentTimes(segmentLength)];
+                Instance.graphManager = new GraphManager(rooms, segment, activeSessionManager.CurrentSession.DnfPerRoom, activeSessionManager.CurrentSession.TotalAttemptsPerRoom, MetricHelper.IsMetricEnabled(Settings.TargetTime, MetricOutput.Overlay) ? MetricEngine.GetTargetTimeTicks() : null);
+                if (!self.Paused)
+                    Instance.graphManager.CurrentGraph(self);
+            }
+            else if (Instance.graphManager.IsShowing())
+            {
+                Instance.graphManager.HideGraph();
+            }
+            else if (!self.Paused)
+            {
+                Instance.graphManager.CurrentGraph(self);
+            }
+        } else if (Instance.graphManager != null && Instance.graphManager.IsShowing())
+        {
+            if (Settings.ButtonNextGraph.Pressed)
+            {
+                Instance.graphManager.NextGraph(self);
+            } else if (Settings.ButtonPreviousGraph.Pressed)
+            {
+                Instance.graphManager.PreviousGraph(self);
+            } else if (!Instance.graphManager.SameSettings(segmentLength))
+            {
+                List<List<TimeTicks>> rooms = [.. Enumerable.Range(0, segmentLength)
+                    .Select<int, List<TimeTicks>>(i => [.. activeSessionManager.CurrentSession.GetRoomTimes(i)])
+                    .Where(roomList => roomList.Count > 0)];
+                List<TimeTicks> segment = [.. activeSessionManager.CurrentSession.GetSegmentTimes(segmentLength)];
+
+                var (prevType, prevRoomIndex) = Instance.graphManager.GetCurrentSlot();
+                bool wasShowing = Instance.graphManager.IsShowing();
+
+                Instance.graphManager.RemoveGraphs();
+                Instance.graphManager = new GraphManager(
+                    rooms, segment,
+                    activeSessionManager.CurrentSession.DnfPerRoom,
+                    activeSessionManager.CurrentSession.TotalAttemptsPerRoom,
+                    MetricHelper.IsMetricEnabled(Settings.TargetTime, MetricOutput.Overlay) ? MetricEngine.GetTargetTimeTicks() : null);
+
+                Instance.graphManager.RestoreSlot(prevType, prevRoomIndex);
+
+                if (!self.Paused && wasShowing)
+                    Instance.graphManager.CurrentGraph(self);
             }
         }
 
