@@ -1,7 +1,8 @@
 using System;
-using System.Linq;
 using Celeste.Mod.SpeebrunConsistencyTracker.Enums;
 using Celeste.Mod.UI;
+using Microsoft.Xna.Framework;
+using Monocle;
 
 namespace Celeste.Mod.SpeebrunConsistencyTracker.Menu;
 
@@ -194,7 +195,23 @@ public static class ModMenuOptions
         TextMenu.Slider textAlpha = new(Dialog.Clean(DialogIds.TextAlphaId), i => (i/100f).ToString("0.00"), 0, 100, _settings._textAlpha);
         TextMenu.Slider roomColor = new(Dialog.Clean(DialogIds.RoomColorId), i => enumColorValues[i].ToString(), 0, enumColorValues.Length - 1, Array.IndexOf(enumColorValues, _settings.RoomColor));
         TextMenu.Slider segmentColor = new(Dialog.Clean(DialogIds.SegmentColorId), i => enumColorValues[i].ToString(), 0, enumColorValues.Length - 1, Array.IndexOf(enumColorValues, _settings.SegmentColor));
-        TextMenuExt.IntSlider timeLossThreshold = new(Dialog.Clean(DialogIds.TimeLossThresholdId), 17, 2000, _settings.TimeLossThresholdMs);
+        
+        FormattedIntSlider timeLossThreshold = new(
+            Dialog.Clean(DialogIds.TimeLossThresholdId),
+            1,
+            118,
+            (int)Math.Round(_settings.TimeLossThresholdMs / 17.0),
+            v => {
+                int snapped = v * 17;
+                return snapped + "ms";
+            }
+        );
+
+        timeLossThreshold.Change(v => 
+        {
+            // Snap to step of 17
+            _settings.TimeLossThresholdMs = (int)Math.Round(v / 17.0) * 17;
+        });
 
         textAlpha.Change(v => {
             _settings._textAlpha = v;
@@ -222,7 +239,7 @@ public static class ModMenuOptions
             _instance.graphManager?.ClearScatterGraph();
             _instance.graphManager?.ClearHistrogram();
         });
-        timeLossThreshold.Change(v => _settings.TimeLossThresholdMs = v);
+        timeLossThreshold.Change(v => _settings.TimeLossThresholdMs = v * 17);
 
         TextMenu.OnOff overlayEnabled = (TextMenu.OnOff)new TextMenu.OnOff(Dialog.Clean(DialogIds.OverlayEnabledId), _settings.OverlayEnabled).Change(
             value =>
@@ -509,5 +526,114 @@ public static class ModMenuOptions
 
         metricsSubMenu.Visible = _settings.Enabled;
         return metricsSubMenu;
+    }
+
+    public class FormattedIntSlider(
+        string label,
+        int min,
+        int max,
+        int initialValue,
+        Func<int, string> valueToString = null) : TextMenuExt.IntSlider(label, min, max, initialValue)
+    {
+        private readonly Func<int, string> valueFormatter = valueToString;
+        private readonly int min = min;
+        private readonly int max = max;
+        private float sine;
+        private int lastDir;
+
+        public override void Update()
+        {
+            base.Update();
+            sine += Engine.RawDeltaTime;
+        }
+        
+        public override void LeftPressed()
+        {
+            int prevIndex = Index;
+            base.LeftPressed();
+            if (Index != prevIndex) lastDir = -1;
+        }
+        
+        public override void RightPressed()
+        {
+            int prevIndex = Index;
+            base.RightPressed();
+            if (Index != prevIndex) lastDir = 1;
+        }
+
+        public override float RightWidth()
+        {
+            if (valueFormatter == null)
+                return base.RightWidth();
+
+            float maxValueWidth = Calc.Max(
+                0f,
+                ActiveFont.Measure(valueFormatter(min)).X,
+                ActiveFont.Measure(valueFormatter(max)).X,
+                ActiveFont.Measure(valueFormatter(Index)).X
+            );
+
+            return maxValueWidth * 0.8f + 120f;
+        }
+        
+        public override void Render(Vector2 position, bool highlighted)
+        {
+            if (valueFormatter == null)
+            {
+                base.Render(position, highlighted);
+                return;
+            }
+            
+            float alpha = Container.Alpha;
+            Color strokeColor = Color.Black * (alpha * alpha * alpha);
+            Color color = Disabled 
+                ? Color.DarkSlateGray 
+                : ((highlighted ? Container.HighlightColor : Color.White) * alpha);
+            
+            ActiveFont.DrawOutline(Label, position, new Vector2(0f, 0.5f), Vector2.One, color, 2f, strokeColor);
+            
+            if (max - min > 0)
+            {
+                float rightWidth = RightWidth();
+                string displayValue = valueFormatter(Index);
+                
+                ActiveFont.DrawOutline(
+                    displayValue, 
+                    position + new Vector2(Container.Width - rightWidth * 0.5f + lastDir * ValueWiggler.Value * 8f, 0f), 
+                    new Vector2(0.5f, 0.5f), 
+                    Vector2.One * 0.8f, 
+                    color, 
+                    2f, 
+                    strokeColor);
+                
+                Vector2 arrowOffset = Vector2.UnitX * (highlighted ? (float)(Math.Sin(sine * 4.0) * 4.0) : 0f);
+                
+                Vector2 leftArrowPos = position + new Vector2(
+                    Container.Width - rightWidth + 40f + ((lastDir < 0) ? (-ValueWiggler.Value * 8f) : 0f), 
+                    0f) - ((Index > min) ? arrowOffset : Vector2.Zero);
+                
+                ActiveFont.DrawOutline(
+                    "<", 
+                    leftArrowPos, 
+                    new Vector2(0.5f, 0.5f), 
+                    Vector2.One, 
+                    (Index > min) ? color : (Color.DarkSlateGray * alpha), 
+                    2f, 
+                    strokeColor);
+                
+                Vector2 rightArrowPos = position + new Vector2(
+                    Container.Width - 40f + ((lastDir > 0) ? (ValueWiggler.Value * 8f) : 0f), 
+                    0f) + ((Index < max) ? arrowOffset : Vector2.Zero);
+                
+                ActiveFont.DrawOutline(
+                    ">", 
+                    rightArrowPos, 
+                    new Vector2(0.5f, 0.5f), 
+                    Vector2.One, 
+                    (Index < max) ? color : (Color.DarkSlateGray * alpha), 
+                    2f, 
+                    strokeColor);
+            }
+        }
     }
 }
